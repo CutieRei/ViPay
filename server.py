@@ -4,8 +4,8 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from fastapi import Form
 from pydantic import BaseModel
-from typing import Optional
-from urllib.parse import quote_plus
+from typing import Optional, Dict
+from urllib.parse import quote_plus, urlencode, parse_qsl, urlparse, urlunparse
 import fastapi
 import dataclasses
 import secrets
@@ -16,8 +16,6 @@ app.add_middleware(SessionMiddleware, secret_key=secret_key)
 templates = Jinja2Templates(directory="templates")
 templates.env.trim_blocks = True
 templates.env.lstrip_blocks = True
-users = {}
-transactions = {}
 
 
 def get_user(request):
@@ -38,9 +36,14 @@ class TransactionPayload(BaseModel):
     redirect: str
     description: Optional[str]
 
+
 class Transaction(TransactionPayload):
     id: str
     status: bool
+
+
+users: Dict[str, User] = {}
+transactions: Dict[str, Transaction] = {}
 
 
 @app.get("/")
@@ -93,12 +96,13 @@ async def register_post(
 
 
 @app.post("/api/transactions")
-async def add_transaction(transaction: TransactionPayload):
+async def add_transaction(transaction: TransactionPayload) -> Transaction:
     transaction = Transaction(
         id=secrets.token_hex(6), status=False, **transaction.dict()
     )
     transactions[transaction.id] = transaction
     return transaction
+
 
 @app.get("/pay")
 async def pay_get(request: Request, transaction_id: str):
@@ -107,8 +111,13 @@ async def pay_get(request: Request, transaction_id: str):
         raise fastapi.HTTPException(404)
     if not request.session.get("user"):
         redirect = quote_plus(transaction.redirect)
-        return RedirectResponse(f"/login?redirect=/pay?redirect={redirect}%26transaction_id={transaction_id}")
-    return templates.TemplateResponse("pay.html.jinja", {"request": request, "transaction": transaction})
+        return RedirectResponse(
+            f"/login?redirect=/pay?redirect={redirect}%26transaction_id={transaction_id}"
+        )
+    return templates.TemplateResponse(
+        "pay.html.jinja", {"request": request, "transaction": transaction}
+    )
+
 
 @app.post("/pay")
 async def pay_post(request: Request, transaction_id: str):
@@ -124,5 +133,8 @@ async def pay_post(request: Request, transaction_id: str):
         raise fastapi.HTTPException(403)
     user.balance -= transaction.amount
     transaction.status = True
-    return RedirectResponse(transaction.redirect, 301)
-
+    redirect = list(urlparse(transaction.redirect))
+    params = dict(parse_qsl(redirect[4]))
+    params["transaction_id"] = transaction.id
+    redirect[4] = urlencode(params)
+    return RedirectResponse(urlunparse(redirect), 301)
