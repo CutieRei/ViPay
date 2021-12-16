@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+	<body>
+		<form method="POST" action={{transaction.redirect_uri}}>
+			<h1>Transaction Id: {{transaction.id}}</h1>
+			<h1>Amount: Rp.{{"{0:,}".format(transaction.amount)}}k</h1>
+			<button type="submit">Confirm</button>
+		</form>
+	</body>
+</html>
