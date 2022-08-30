@@ -1,0 +1,19 @@
+[project]
+name = ""
+version = ""
+description = ""
+authors = [
+    {name = "CutieRei", email = "cutierei.py@gmail.com"},
+]
+dependencies = [
+    "fastapi>=0.81.0",
+    "uvicorn>=0.18.3",
+]
+requires-python = ">=3.10"
+license = {text = "WTFPL"}
+
+[tool.pdm]
+
+[build-system]
+requires = ["pdm-pep517>=1.0.0"]
+build-backend = "pdm.pep517.api"
